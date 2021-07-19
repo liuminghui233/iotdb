@@ -287,8 +287,8 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private void flushBuffer(ILogWriter writer) {
-//    logger.warn("[wal] {} flushBuffer start", this.hashCode());
-//    long start = System.currentTimeMillis();
+    //    logger.warn("[wal] {} flushBuffer start", this.hashCode());
+    //    long start = System.currentTimeMillis();
     try {
       writer.write(logBufferFlushing);
     } catch (ClosedChannelException e) {
@@ -298,12 +298,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       return;
     }
-//    finally {
-//      long elapse = System.currentTimeMillis() - start;
-//      if (elapse > 5000) {
-//        logger.error("[wal] flushBuffer cost: {}ms", elapse);
-//      }
-//    }
+    //    finally {
+    //      long elapse = System.currentTimeMillis() - start;
+    //      if (elapse > 5000) {
+    //        logger.error("[wal] flushBuffer cost: {}ms", elapse);
+    //      }
+    //    }
     logBufferFlushing.clear();
 
     try {
