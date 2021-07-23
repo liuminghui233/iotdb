@@ -169,7 +169,7 @@ public class MetaGroupMember extends RaftMember {
    * every "REFRESH_CLIENT_SEC" seconds, a dataClientRefresher thread will try to refresh one thrift
    * connection for each nodes other than itself.
    */
-  private static final int REFRESH_CLIENT_SEC = 1;
+  private static final int REFRESH_CLIENT_SEC = 5;
 
   /** how many times is a data record replicated, also the number of nodes in a data group */
   private static final int REPLICATION_NUM =
@@ -535,9 +535,9 @@ public class MetaGroupMember extends RaftMember {
 
   private void generateNodeReport() {
     try {
-      if (logger.isInfoEnabled()) {
+      if (logger.isDebugEnabled()) {
         NodeReport report = genNodeReport();
-        logger.info(report.toString());
+        logger.debug(report.toString());
       }
     } catch (Exception e) {
       logger.error("{} exception occurred when generating node report", name, e);
