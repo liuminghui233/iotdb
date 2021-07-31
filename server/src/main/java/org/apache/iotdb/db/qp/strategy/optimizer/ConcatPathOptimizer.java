@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
@@ -56,7 +57,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
-  public Operator transform(Operator operator, int maxDeduplicatedPathNum)
+  public Operator transform(Operator operator)
       throws LogicalOptimizeException, PathNumOverLimitException {
     if (!(operator instanceof SFWOperator)) {
       logger.warn("given operator isn't SFWOperator, cannot concat seriesPath");
@@ -102,7 +103,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             select,
             seriesLimit,
             seriesOffset,
-            maxDeduplicatedPathNum,
             ((QueryOperator) operator).getIndexType() == null);
       } else {
         isAlignByDevice = true;
@@ -179,7 +179,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       SelectOperator selectOperator,
       int limit,
       int offset,
-      int maxDeduplicatedPathNum,
       boolean needRemoveStar)
       throws LogicalOptimizeException, PathNumOverLimitException {
     List<PartialPath> suffixPaths = judgeSelectOperator(selectOperator);
@@ -239,8 +238,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           afterConcatUdfList,
           selectOperator,
           limit,
-          offset,
-          maxDeduplicatedPathNum);
+          offset);
     } else {
       selectOperator.setSuffixPathList(afterConcatPaths);
     }
@@ -355,14 +353,10 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       List<UDFContext> afterConcatUdfList,
       SelectOperator selectOperator,
       int finalLimit,
-      int finalOffset,
-      int maxDeduplicatedPathNum)
+      int finalOffset)
       throws LogicalOptimizeException, PathNumOverLimitException {
     int offset = finalOffset;
-    int limit =
-        finalLimit == 0 || maxDeduplicatedPathNum < finalLimit
-            ? maxDeduplicatedPathNum + 1
-            : finalLimit;
+    int limit = finalLimit == 0 ? Integer.MAX_VALUE : finalLimit;
     int consumed = 0;
 
     List<PartialPath> newSuffixPathList = new ArrayList<>();
@@ -436,6 +430,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         }
 
         if (limit == 0) {
+          int maxDeduplicatedPathNum =
+              IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum();
           if (maxDeduplicatedPathNum < newSuffixPathList.size()) {
             throw new PathNumOverLimitException(maxDeduplicatedPathNum);
           }
