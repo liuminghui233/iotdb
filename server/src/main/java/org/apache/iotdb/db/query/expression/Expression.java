@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.expression.binary.AdditionExpression;
 import org.apache.iotdb.db.query.expression.binary.DivisionExpression;
@@ -228,6 +229,8 @@ public abstract class Expression {
   public final Iterator<Expression> iterator() {
     return new ExpressionIterator(this);
   }
+
+  public abstract void bindInputLayerColumnIndexWithExpression(Map<String, List<InputLocation>> tmpMap);
 
   /** the iterator of an Expression tree with level-order traversal */
   private static class ExpressionIterator implements Iterator<Expression> {

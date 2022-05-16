@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
@@ -277,6 +278,16 @@ public class FunctionExpression extends Expression {
       expression.bindInputLayerColumnIndexWithExpression(udtfPlan);
     }
     inputColumnIndex = udtfPlan.getReaderIndexByExpressionName(toString());
+  }
+
+  @Override
+  public void bindInputLayerColumnIndexWithExpression(Map<String, List<InputLocation>> tmpMap) {
+    for (Expression expression : expressions) {
+      expression.bindInputLayerColumnIndexWithExpression(tmpMap);
+    }
+    if (tmpMap.containsKey(toString())) {
+      inputColumnIndex = tmpMap.get(toString()).get(0).getValueColumnIndex();
+    }
   }
 
   @Override

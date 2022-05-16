@@ -454,8 +454,8 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               TransformNode.class.getSimpleName());
       final Operator inputOperator = generateOnlyChildOperator(node, context);
-      final List<TSDataType> inputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
-
+      final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
+      Map<String, List<InputLocation>> tmpMap = makeLayout(node);
       try {
         return new TransformOperator(
             operatorContext,
@@ -464,7 +464,8 @@ public class LocalExecutionPlanner {
             node.getOutputExpressions(),
             node.isKeepNull(),
             node.getZoneId(),
-            context.getTypeProvider());
+            context.getTypeProvider(),
+                tmpMap);
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }
@@ -476,7 +477,7 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(), node.getPlanNodeId(), FilterNode.class.getSimpleName());
       final Operator inputOperator = generateOnlyChildOperator(node, context);
-      final List<TSDataType> inputDataTypes = getOutputColumnTypes(node, context.getTypeProvider());
+      final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
 
       try {
         return new FilterOperator(
@@ -487,7 +488,8 @@ public class LocalExecutionPlanner {
             node.getOutputExpressions(),
             node.isKeepNull(),
             node.getZoneId(),
-            context.getTypeProvider());
+            context.getTypeProvider(),
+                makeLayout(node));
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }
@@ -674,6 +676,11 @@ public class LocalExecutionPlanner {
         tsBlockIndex++;
       }
       return outputMappings;
+    }
+
+    private List<TSDataType> getInputColumnTypes(PlanNode node, TypeProvider typeProvider) {
+      return node.getChildren().stream().map(PlanNode::getOutputColumnNames).flatMap(List::stream).map(typeProvider::getType)
+              .collect(Collectors.toList());
     }
 
     private List<TSDataType> getOutputColumnTypes(PlanNode node, TypeProvider typeProvider) {

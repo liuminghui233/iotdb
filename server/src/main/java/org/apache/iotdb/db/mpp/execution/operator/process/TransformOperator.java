@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.layer.EvaluationDAGBuilder;
@@ -46,6 +47,7 @@ import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class TransformOperator implements ProcessOperator {
 
@@ -71,14 +73,17 @@ public class TransformOperator implements ProcessOperator {
   protected TimeSelector timeHeap;
   protected List<TSDataType> outputDataTypes;
 
+  protected boolean isFirst = true;
+
   public TransformOperator(
-      OperatorContext operatorContext,
-      Operator inputOperator,
-      List<TSDataType> inputDataTypes,
-      Expression[] outputExpressions,
-      boolean keepNull,
-      ZoneId zoneId,
-      TypeProvider typeProvider)
+          OperatorContext operatorContext,
+          Operator inputOperator,
+          List<TSDataType> inputDataTypes,
+          Expression[] outputExpressions,
+          boolean keepNull,
+          ZoneId zoneId,
+          TypeProvider typeProvider,
+          Map<String, List<InputLocation>> tmpMap)
       throws QueryProcessException, IOException {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
@@ -88,9 +93,7 @@ public class TransformOperator implements ProcessOperator {
 
     initInputLayer(inputDataTypes);
     initUdtfContext(zoneId);
-    initTransformers();
-    readyForFirstIteration();
-    updateTypeProvider(typeProvider);
+    initTransformers(tmpMap);
   }
 
   private void initInputLayer(List<TSDataType> inputDataTypes) throws QueryProcessException {
@@ -106,7 +109,7 @@ public class TransformOperator implements ProcessOperator {
     udtfContext.constructUdfExecutors(outputExpressions);
   }
 
-  protected void initTransformers() throws QueryProcessException, IOException {
+  protected void initTransformers(Map<String, List<InputLocation>> tmpMap) throws QueryProcessException, IOException {
     UDFRegistrationService.getInstance().acquireRegistrationLock();
     try {
       // This statement must be surrounded by the registration lock.
@@ -120,6 +123,7 @@ public class TransformOperator implements ProcessOperator {
                   udtfContext,
                   udfTransformerMemoryBudgetInMB + udfCollectorMemoryBudgetInMB)
               .buildLayerMemoryAssigner()
+                  .bindInputLayerColumnIndexWithExpression(tmpMap)
               .buildResultColumnPointReaders()
               .getOutputPointReaders();
     } finally {
@@ -157,6 +161,16 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
+    if (isFirst) {
+      try {
+        readyForFirstIteration();
+      } catch (QueryProcessException e) {
+        e.printStackTrace();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+      isFirst = false;
+    }
     return !timeHeap.isEmpty();
   }
 
@@ -195,6 +209,7 @@ public class TransformOperator implements ProcessOperator {
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
+      tsBlockBuilder.declarePositions(rowCount);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

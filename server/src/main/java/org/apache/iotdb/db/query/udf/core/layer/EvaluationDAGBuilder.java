@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFContext;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
@@ -27,6 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class EvaluationDAGBuilder {
@@ -60,7 +62,7 @@ public class EvaluationDAGBuilder {
     this.outputExpressions = outputExpressions;
     this.udtfContext = udtfContext;
 
-    int size = inputLayer.getInputColumnCount();
+    int size = outputExpressions.length;
     outputPointReaders = new LayerPointReader[size];
 
     memoryAssigner = new LayerMemoryAssigner(memoryBudgetInMB);
@@ -74,6 +76,13 @@ public class EvaluationDAGBuilder {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     }
     memoryAssigner.build();
+    return this;
+  }
+
+  public EvaluationDAGBuilder bindInputLayerColumnIndexWithExpression(Map<String, List<InputLocation>> tmpMap) {
+    for (Expression expression : outputExpressions) {
+      expression.bindInputLayerColumnIndexWithExpression(tmpMap);
+    }
     return this;
   }
 
